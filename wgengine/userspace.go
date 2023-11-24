@@ -16,9 +16,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/tailscale/wireguard-go/device"
 	"github.com/tailscale/wireguard-go/tun"
+	"github.com/tailscale/wireguard-go/ipc"
 	"tailscale.com/control/controlknobs"
 	"tailscale.com/envknob"
 	"tailscale.com/health"
@@ -389,6 +389,29 @@ func NewUserspaceEngine(logf logger.Logf, conf Config) (_ Engine, reterr error) 
 	// wgdev takes ownership of tundev, will close it when closed.
 	e.logf("Creating WireGuard device...")
 	e.wgdev = wgcfg.NewDevice(e.tundev, e.magicConn.Bind(), e.wgLogger.DeviceLogger)
+
+	fileUAPI, err := ipc.UAPIOpen(tunName)
+	if err == nil {
+		uapi, err := ipc.UAPIListen(tunName, fileUAPI)
+		if err == nil {
+			e.logf("listening on UAPI socket")
+			go func() {
+				for {
+					conn, err := uapi.Accept()
+					if err != nil {
+						e.logf("failed to accept UAPI socket connection: %v", err)
+					} else {
+						go e.wgdev.IpcHandle(conn)
+					}
+				}
+			}()		
+		} else {
+			e.logf("failed to listen on UAPI socket: %v", err)
+		}
+	} else {
+		e.logf("error creating UAPI unix domain socket: %v", err)
+	}
+
 	closePool.addFunc(e.wgdev.Close)
 	closePool.addFunc(func() {
 		if err := e.magicConn.Close(); err != nil {
