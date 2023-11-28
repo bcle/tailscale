@@ -22,6 +22,7 @@ import (
 // Config.
 func (cfg *Config) ToUAPI(logf logger.Logf, w io.Writer, prev *Config) error {
 	var stickyErr error
+	fmt.Println("--- ToUAPI begin ---")
 	set := func(key, value string) {
 		if stickyErr != nil {
 			return
@@ -30,6 +31,7 @@ func (cfg *Config) ToUAPI(logf logger.Logf, w io.Writer, prev *Config) error {
 		if err != nil {
 			stickyErr = err
 		}
+		_, _ = fmt.Printf("%s=%s\n", key, value)
 	}
 	setUint16 := func(key string, value uint16) {
 		set(key, strconv.FormatUint(uint64(value), 10))
@@ -120,6 +122,7 @@ func (cfg *Config) ToUAPI(logf logger.Logf, w io.Writer, prev *Config) error {
 	if stickyErr != nil {
 		stickyErr = fmt.Errorf("ToUAPI: %w", stickyErr)
 	}
+	fmt.Println("--- ToUAPI end ---")
 	return stickyErr
 }
 
